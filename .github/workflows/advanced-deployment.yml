@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      projects: write
+      repository-projects: write
 
     steps:
       # Step 1: Checkout Code

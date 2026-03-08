@@ -1,0 +1,44 @@
+name: 'Add Fields to Project'
+description: 'Create or update a GitHub Projects item with custom fields.'
+author: 'GitHub Copilot'
+inputs:
+  project_number:
+    description: 'Numeric ID of the project.'
+    required: true
+  project_id:
+    description: 'GraphQL ID of the project.'
+    required: true
+  repo_name:
+    description: 'Repository name used as the service value.'
+    required: true
+  run_id:
+    description: 'GitHub run ID for approval link.'
+    required: true
+  ref_name:
+    description: 'Branch or tag name used for version.'
+    required: true
+  title:
+    description: 'Optional title override.'
+    required: false
+  service:
+    description: 'Optional service name.'
+    required: false
+  status:
+    description: 'Initial status value.'
+    required: false
+    default: 'waiting-approval'
+  approval_url:
+    description: 'URL for the deployment approval link.'
+    required: false
+  version:
+    description: 'Version string.'
+    required: false
+  item_id:
+    description: 'Existing item ID to update.'
+    required: false
+outputs:
+  item-id:
+    description: 'ID of the created or updated project item.'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'

@@ -17,10 +17,13 @@ on:
 
 permissions:
   contents: read
-  repository-projects: write        
+  repository-projects: write
+
 jobs:
   test-deployment:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
 
     steps:
       # Step 1: Checkout Code

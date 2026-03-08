@@ -1,0 +1,94 @@
+name: Test Deployment Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_number:
+        description: 'GitHub Project number'
+        required: true
+        default: '1'
+      project_id:
+        description: 'GitHub Project GraphQL ID'
+        required: true
+      environment:
+        description: 'Environment to deploy to'
+        required: false
+        default: 'staging'
+
+jobs:
+  test-deployment:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      projects: write
+
+    steps:
+      # Step 1: Checkout Code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Build fake
+      - name: Run Build
+        run: |
+          echo "🔨 Building application..."
+          npm --version
+          node --version
+          echo "✅ Build completed successfully"
+
+      # Step 3: Request Deploy (Create item with waiting-approval status)
+      - name: Request Deploy - Create Project Item
+        id: request_deploy
+        uses: ./
+        with:
+          project_number: ${{ github.event.inputs.project_number }}
+          project_id: ${{ github.event.inputs.project_id }}
+          repo_name: ${{ github.repository }}
+          run_id: ${{ github.run_id }}
+          ref_name: ${{ github.ref_name }}
+          title: 'Deployment: ${{ github.repository }} - Build #${{ github.run_number }}'
+          service: 'test-service'
+          status: 'waiting-approval'
+          approval_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          version: 'v${{ github.run_number }}'
+
+      - name: Log Created Item
+        run: |
+          echo "📋 Deployment item created:"
+          echo "Item ID: ${{ steps.request_deploy.outputs.item-id }}"
+          echo "Status: waiting-approval"
+
+      # Step 4: Generate Tag (fake) - Simulate approval
+      - name: Simulate Approval and Generate Tag
+        id: generate_tag
+        run: |
+          echo "✅ Deployment approved!"
+          echo "🏷️  Creating tag..."
+          TAG_NAME="v${{ github.run_number }}-build"
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "✅ Tag generated: ${TAG_NAME}"
+
+      # Step 5: Update Item to Completed
+      - name: Update Deploy Status - Mark as Completed
+        uses: ./
+        with:
+          project_number: ${{ github.event.inputs.project_number }}
+          project_id: ${{ github.event.inputs.project_id }}
+          repo_name: ${{ github.repository }}
+          run_id: ${{ github.run_id }}
+          ref_name: ${{ github.ref_name }}
+          item_id: ${{ steps.request_deploy.outputs.item-id }}
+          status: 'completed'
+          version: ${{ steps.generate_tag.outputs.tag_name }}
+
+      - name: Deployment Summary
+        run: |
+          echo "🎉 Deployment Workflow Complete!"
+          echo ""
+          echo "📊 Summary:"
+          echo "  Repository: ${{ github.repository }}"
+          echo "  Build Number: ${{ github.run_number }}"
+          echo "  Item ID: ${{ steps.request_deploy.outputs.item-id }}"
+          echo "  Tag: ${{ steps.generate_tag.outputs.tag_name }}"
+          echo "  Status: completed"
+          echo ""
+          echo "✅ All steps completed successfully!"

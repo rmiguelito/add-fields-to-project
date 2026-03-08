@@ -1,0 +1,123 @@
+name: Advanced Deployment Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_number:
+        description: 'GitHub Project number'
+        required: true
+        default: '1'
+      project_id:
+        description: 'GitHub Project GraphQL ID'
+        required: true
+
+jobs:
+  advanced-deployment:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      projects: write
+
+    steps:
+      # Step 1: Checkout Code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Build Application
+      - name: Build Application
+        run: |
+          echo "🔨 Building application..."
+          echo "  - Installing dependencies..."
+          echo "  - Running tests..."
+          echo "  - Creating bundle..."
+          echo "✅ Build completed successfully"
+
+      # Step 3: Create Deployment Request
+      - name: Create Deployment Request
+        id: create_item
+        uses: ./
+        with:
+          project_number: ${{ github.event.inputs.project_number }}
+          project_id: ${{ github.event.inputs.project_id }}
+          repo_name: 'advanced-deployment'
+          run_id: ${{ github.run_id }}
+          ref_name: ${{ github.ref_name }}
+          title: 'Advanced Deployment - ${{ github.actor }} (${{ github.ref_name }})'
+          service: 'api-service'
+          status: 'waiting-approval'
+          approval_url: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          version: '${{ github.sha }}'
+
+      - name: Created Item Details
+        run: |
+          echo "📋 Created deployment item: ${{ steps.create_item.outputs.item-id }}"
+          echo "Status: waiting-approval"
+
+      # Step 4: Simulate Approval Process
+      - name: Approve and Tag Release
+        id: approve
+        run: |
+          echo "✅ Deployment approved by release team!"
+          echo ""
+          echo "🏷️  Generating release tag..."
+          RELEASE_TAG="release-$(date +%Y%m%d-%H%M%S)"
+          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "Generated: ${RELEASE_TAG}"
+
+      # Step 5.1: Update Status to Deploying
+      - name: Update Status - Deploying
+        uses: ./
+        with:
+          project_number: ${{ github.event.inputs.project_number }}
+          project_id: ${{ github.event.inputs.project_id }}
+          repo_name: 'advanced-deployment'
+          run_id: ${{ github.run_id }}
+          ref_name: ${{ github.ref_name }}
+          item_id: ${{ steps.create_item.outputs.item-id }}
+          status: 'deploying'
+          version: ${{ steps.approve.outputs.tag }}
+
+      - name: Deploy Application
+        run: |
+          echo "🚀 Deploying to production..."
+          echo "  - Pushing to container registry..."
+          echo "  - Updating service..."
+          echo "  - Running health checks..."
+          sleep 2
+          echo "✅ Deployment successful!"
+
+      # Step 5.2: Update Status to Completed
+      - name: Update Status - Completed
+        uses: ./
+        with:
+          project_number: ${{ github.event.inputs.project_number }}
+          project_id: ${{ github.event.inputs.project_id }}
+          repo_name: 'advanced-deployment'
+          run_id: ${{ github.run_id }}
+          ref_name: ${{ github.ref_name }}
+          item_id: ${{ steps.create_item.outputs.item-id }}
+          status: 'completed'
+          version: ${{ steps.approve.outputs.tag }}
+
+      - name: Deployment Complete
+        run: |
+          echo "🎉 Deployment workflow completed!"
+          echo ""
+          echo "📊 Final Status:"
+          echo "  Item ID: ${{ steps.create_item.outputs.item-id }}"
+          echo "  Release Tag: ${{ steps.approve.outputs.tag }}"
+          echo "  Status: completed"
+
+      # Handle deployment failures
+      - name: Update Status - Failed (if previous steps failed)
+        if: failure()
+        uses: ./
+        with:
+          project_number: ${{ github.event.inputs.project_number }}
+          project_id: ${{ github.event.inputs.project_id }}
+          repo_name: 'advanced-deployment'
+          run_id: ${{ github.run_id }}
+          ref_name: ${{ github.ref_name }}
+          item_id: ${{ steps.create_item.outputs.item-id }}
+          status: 'failed'
+          version: 'FAILED'
